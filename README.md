@@ -1,4 +1,4 @@
-# 🌐 Ahmed Touzani's Portfolio
+# 🌐 AYOUB NACER's Portfolio
 
 > A modern, captivating portfolio website that showcases my journey as a Full Stack Developer. Built with passion using HTML, CSS, and JavaScript, featuring an elegant design that blends contemporary aesthetics with Moroccan cultural elements.
 
@@ -99,9 +99,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📬 Contact
 
-Ahmed Touzani - [@AhmedTouzani](https://twitter.com/ahmed_touzani48) - touzaniahmed39@email.com
+ ayoubnacerayoubnacer@email.com
 
-Project Link: [https://github.com/ahmedtouzani/portfolio](https://github.com/ahmedtouzani/portfolio)
+
 
 ---
 
