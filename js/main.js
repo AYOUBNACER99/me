@@ -5,9 +5,17 @@ AOS.init({
     offset: 100
 });
 
+// EmailJS configuration
+const emailjsConfig = {
+    publicKey: "uaS3CIHi9pjj6P_IA",
+    serviceID: "service_sy90wmu",
+    contactTemplate: "template_xxw2b7f",
+    autoReplyTemplate: "template_c3x2p9t"
+};
+
 // EmailJS initialization
 (function() {
-    emailjs.init("YOUR_PUBLIC_KEY");
+    emailjs.init(emailjsConfig.publicKey);
     console.log('EmailJS initialized');
 })();
 
@@ -25,6 +33,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const formControls = contactForm.querySelectorAll('.form-control');
     const successMessage = document.querySelector('.success-message');
     const errorMessage = document.querySelector('.error-message');
+
+    // Button label and icon, safely queried (may be missing on some layouts)
+    const btnSpan = submitBtn ? submitBtn.querySelector('span') : null;
+    const btnIcon = submitBtn ? submitBtn.querySelector('i') : null;
+    const originalBtnText = btnSpan ? btnSpan.textContent : 'Send';
+
+    function setButtonText(text) {
+        if (btnSpan) btnSpan.textContent = text;
+    }
+
+    function setButtonIcon(className) {
+        if (btnIcon) btnIcon.className = className;
+    }
+
+    let isSubmitting = false;
 
     // Add ripple effect to form controls
     formControls.forEach(control => {
@@ -48,43 +71,68 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => ripple.remove(), 1000);
     }
 
-    // Form submission with EmailJS
+    // Form submission with EmailJS — single, clean handler
     contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
+        if (!submitBtn) {
+            console.error('Submit button not found!');
+            return;
+        }
+
+        // Prevent duplicate submissions while a send is in progress
+        if (isSubmitting || submitBtn.disabled) return;
+
         if (!validateForm()) return;
+
+        isSubmitting = true;
+        submitBtn.disabled = true;
+
+        const getField = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value.trim() : '';
+        };
+
+        let emailStage = 'ContactUs';
 
         try {
             submitBtn.classList.add('loading');
-            const btnText = submitBtn.querySelector('span');
-            const btnIcon = submitBtn.querySelector('i');
-            const originalText = btnText.textContent;
-            
-            btnText.textContent = 'Sending...';
-            btnIcon.className = 'fas fa-spinner fa-spin';
+            setButtonText('Sending...');
+            setButtonIcon('fas fa-spinner fa-spin');
 
-            // Get form data
-            const formData = {
-                from_name: document.getElementById('name').value,
-                to_name: "Ahmed",
-                message: document.getElementById('message').value,
-                reply_to: document.getElementById('email').value
-            };
-            
-            console.log('Attempting to send email with data:', formData);
+            const visitorName = getField('name');
+            const visitorEmail = getField('email');
+            const visitorMessage = getField('message');
 
-            // Send email using EmailJS
-            const response = await emailjs.sendForm('service_id', 'template_id', contactForm);
-            console.log('Email sent successfully:', response);
-            
-            // Success state
+            console.log('Attempting to send email with data:', { visitorName, visitorEmail, visitorMessage });
+
+            // 1) Contact Us email (template_xxw2b7f) -> ayoubnacerayoubnacer@gmail.com
+            await emailjs.send(emailjsConfig.serviceID, emailjsConfig.contactTemplate, {
+                name: visitorName,
+                email: visitorEmail,
+                from_name: visitorName,
+                from_email: visitorEmail,
+                title: "Portfolio Contact",
+                message: visitorMessage
+            });
+
+            // 2) Auto-reply (template_c3x2p9t) -> sent to the visitor via {{email}}
+            emailStage = 'AutoReply';
+            await emailjs.send(emailjsConfig.serviceID, emailjsConfig.autoReplyTemplate, {
+                email: visitorEmail,
+                from_name: visitorName,
+                from_email: visitorEmail
+            });
+            console.log('Contact email and auto-reply sent successfully');
+
+            // Success state — only after BOTH emails were sent
             submitBtn.classList.remove('loading');
             submitBtn.classList.add('success');
-            btnText.textContent = 'Sent!';
-            btnIcon.className = 'fas fa-check';
-            
+            setButtonText('Sent!');
+            setButtonIcon('fas fa-check');
+
             showMessage(successMessage);
-            
+
             // Reset form with animation
             formControls.forEach(control => {
                 control.style.transform = 'translateX(-10px)';
@@ -97,29 +145,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 300);
             });
 
-            // Reset button
-            setTimeout(() => {
-                submitBtn.classList.remove('success');
-                btnText.textContent = originalText;
-                btnIcon.className = 'fas fa-paper-plane';
-            }, 2000);
+            setTimeout(() => resetButton('success'), 2000);
 
         } catch (error) {
-            console.error('EmailJS Error:', error);
-            
-            // Error state
+            console.error(`EmailJS Error during ${emailStage}:`, error);
+
+            // Error state — form is NOT reset, visitor's data is preserved
             submitBtn.classList.remove('loading');
             submitBtn.classList.add('error');
-            btnText.textContent = 'Error!';
-            btnIcon.className = 'fas fa-times';
-            
+            setButtonText('Error!');
+            setButtonIcon('fas fa-times');
+
             showMessage(errorMessage);
 
-            setTimeout(() => {
-                submitBtn.classList.remove('error');
-                btnText.textContent = originalText;
-                btnIcon.className = 'fas fa-paper-plane';
-            }, 2000);
+            setTimeout(() => resetButton('error'), 2000);
+        }
+
+        function resetButton(state) {
+            submitBtn.classList.remove(state);
+            setButtonText(originalBtnText);
+            setButtonIcon('fas fa-paper-plane');
+            submitBtn.disabled = false;
+            isSubmitting = false;
         }
     });
 
@@ -953,8 +1000,15 @@ const animateSkills = () => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const progressBar = entry.target.querySelector('.skill-progress');
+
+                if (!progressBar) {
+                    console.warn('Missing .skill-progress:', entry.target);
+                    observer.unobserve(entry.target);
+                    return;
+                }
+
                 const progress = progressBar.dataset.progress;
-                
+
                 // Start the progress bar animation
                 progressBar.style.width = `${progress}%`;
                 
@@ -973,18 +1027,22 @@ const animateSkills = () => {
     skillItems.forEach(item => {
         // Reset progress bar width
         const progressBar = item.querySelector('.skill-progress');
-        progressBar.style.width = '0';
-        
+        if (progressBar) {
+            progressBar.style.width = '0';
+        }
+
         // Add hover effect for skill items
-        item.addEventListener('mouseenter', () => {
-            const icon = item.querySelector('.skill-icon i');
-            icon.style.transform = 'rotate(360deg) scale(1.2)';
-        });
+        const icon = item.querySelector('.skill-icon i');
         
-        item.addEventListener('mouseleave', () => {
-            const icon = item.querySelector('.skill-icon i');
-            icon.style.transform = 'rotate(0) scale(1)';
-        });
+        if (icon) {
+            item.addEventListener('mouseenter', () => {
+                icon.style.transform = 'rotate(360deg) scale(1.2)';
+            });
+            
+            item.addEventListener('mouseleave', () => {
+                icon.style.transform = 'rotate(0) scale(1)';
+            });
+        }
         
         observer.observe(item);
     });
@@ -1061,14 +1119,16 @@ const enhanceSkillCards = () => {
     // Handle skill item interactions
     skillItems.forEach(item => {
         const progress = item.querySelector('.skill-progress');
-        const progressValue = progress.dataset.progress;
+        const progressValue = progress ? progress.dataset.progress : null;
         const particlesContainer = item.querySelector('.particles');
         
         // Add skill level indicator
-        const level = document.createElement('div');
-        level.className = 'skill-level';
-        level.textContent = `${progressValue}%`;
-        item.appendChild(level);
+        if (progress && progressValue) {
+            const level = document.createElement('div');
+            level.className = 'skill-level';
+            level.textContent = `${progressValue}%`;
+            item.appendChild(level);
+        }
         
         // Intersection Observer for progress bars and particles
         const observer = new IntersectionObserver((entries) => {
@@ -1076,7 +1136,9 @@ const enhanceSkillCards = () => {
                 if (entry.isIntersecting) {
                     item.classList.add('active');
                     setTimeout(() => {
-                        progress.style.width = `${progressValue}%`;
+                        if (progress && progressValue) {
+                            progress.style.width = `${progressValue}%`;
+                        }
                         animateParticles(particlesContainer);
                     }, 200);
                     observer.unobserve(item);

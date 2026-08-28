@@ -64,13 +64,7 @@ cd portfolio
 ## ⚙️ Configuration
 
 ### EmailJS Setup
-1. Sign up at [EmailJS](https://www.emailjs.com/)
-2. Create an email service
-3. Set up your email template
-4. Configure in `main.js`:
-   ```javascript
-   emailjs.init("YOUR_PUBLIC_KEY");
-   ```
+EmailJS is already configured in `js/main.js` via the `emailjsConfig` object (public key, service ID, contact template, and auto-reply template). The contact form sends the visitor's message to your inbox (`template_xxw2b7f`) and an automatic confirmation reply to the visitor (`template_c3x2p9t`). No additional setup is required — do not add another `emailjs.init()` call.
 
 ### Analytics Setup
 1. Create a Google Analytics account
