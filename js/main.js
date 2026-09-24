@@ -5,21 +5,7 @@ AOS.init({
     offset: 100
 });
 
-// EmailJS configuration
-const emailjsConfig = {
-    publicKey: "uaS3CIHi9pjj6P_IA",
-    serviceID: "service_sy90wmu",
-    contactTemplate: "template_xxw2b7f",
-    autoReplyTemplate: "template_c3x2p9t"
-};
-
-// EmailJS initialization
-(function() {
-    emailjs.init(emailjsConfig.publicKey);
-    console.log('EmailJS initialized');
-})();
-
-// Enhanced Contact Form with EmailJS
+// Enhanced Contact Form with FormSubmit
 document.addEventListener('DOMContentLoaded', function() {
     const contactForm = document.getElementById('contactForm');
     console.log('Contact form found:', contactForm);
@@ -71,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => ripple.remove(), 1000);
     }
 
-    // Form submission with EmailJS — single, clean handler
+    // Form submission with FormSubmit — single, clean handler
     contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
@@ -88,44 +74,34 @@ document.addEventListener('DOMContentLoaded', function() {
         isSubmitting = true;
         submitBtn.disabled = true;
 
-        const getField = (id) => {
-            const el = document.getElementById(id);
-            return el ? el.value.trim() : '';
-        };
-
-        let emailStage = 'ContactUs';
-
         try {
             submitBtn.classList.add('loading');
             setButtonText('Sending...');
             setButtonIcon('fas fa-spinner fa-spin');
 
-            const visitorName = getField('name');
-            const visitorEmail = getField('email');
-            const visitorMessage = getField('message');
+            const payload = {
+                name: (document.getElementById('name') || {}).value || '',
+                email: (document.getElementById('email') || {}).value || '',
+                message: (document.getElementById('message') || {}).value || ''
+            };
 
-            console.log('Attempting to send email with data:', { visitorName, visitorEmail, visitorMessage });
-
-            // 1) Contact Us email (template_xxw2b7f) -> ayoubnacerayoubnacer@gmail.com
-            await emailjs.send(emailjsConfig.serviceID, emailjsConfig.contactTemplate, {
-                name: visitorName,
-                email: visitorEmail,
-                from_name: visitorName,
-                from_email: visitorEmail,
-                title: "Portfolio Contact",
-                message: visitorMessage
+            const response = await fetch('https://formsubmit.co/ajax/ayoubnacerayoubnacer@gmail.com', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
             });
 
-            // 2) Auto-reply (template_c3x2p9t) -> sent to the visitor via {{email}}
-            emailStage = 'AutoReply';
-            await emailjs.send(emailjsConfig.serviceID, emailjsConfig.autoReplyTemplate, {
-                email: visitorEmail,
-                from_name: visitorName,
-                from_email: visitorEmail
-            });
-            console.log('Contact email and auto-reply sent successfully');
+            const result = await response.json();
+            if (!response.ok || result.success === 'false') {
+                throw new Error(result.message || `FormSubmit error: ${response.status} ${response.statusText}`);
+            }
 
-            // Success state — only after BOTH emails were sent
+            console.log('Contact message sent successfully via FormSubmit');
+
+            // Success state
             submitBtn.classList.remove('loading');
             submitBtn.classList.add('success');
             setButtonText('Sent!');
@@ -148,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => resetButton('success'), 2000);
 
         } catch (error) {
-            console.error(`EmailJS Error during ${emailStage}:`, error);
+            console.error('FormSubmit Error:', error);
 
             // Error state — form is NOT reset, visitor's data is preserved
             submitBtn.classList.remove('loading');
@@ -1002,7 +978,6 @@ const animateSkills = () => {
                 const progressBar = entry.target.querySelector('.skill-progress');
 
                 if (!progressBar) {
-                    console.warn('Missing .skill-progress:', entry.target);
                     observer.unobserve(entry.target);
                     return;
                 }
@@ -1027,9 +1002,12 @@ const animateSkills = () => {
     skillItems.forEach(item => {
         // Reset progress bar width
         const progressBar = item.querySelector('.skill-progress');
-        if (progressBar) {
-            progressBar.style.width = '0';
+
+        // Skip About-section skill items that have no progress bar
+        if (!progressBar) {
+            return;
         }
+        progressBar.style.width = '0';
 
         // Add hover effect for skill items
         const icon = item.querySelector('.skill-icon i');
